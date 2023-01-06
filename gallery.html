@@ -1,0 +1,435 @@
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap" rel="stylesheet"> 
+    <style>
+      body {
+        font-family: 'Courier Prime', 'courier', 'monospace';
+        /* padding: 2vh;   */
+      }
+      * {box-sizing:border-box}
+      .mySlides {display: none}
+
+      .layout-container {
+        display: flex;
+        padding: 2vw;
+      }
+      .left-container {
+        width: 60vw;
+        height: 90vh;
+        display: flex;
+        align-items: center; 
+        justify-content: space-between;
+        flex-direction: column;
+        padding: 0 2vw 2vw 0;
+        border-right: black dashed 1px;
+      }
+      .right-container {
+        display: flex;
+        align-items: flex-start; 
+        justify-content: space-between;
+        flex-direction: column;
+        width: 40vw;
+        padding: 2vw;
+      }
+      /* Slideshow container */
+      .slideshow-container {
+        display: flex;
+        justify-content: center;
+        align-items: center; 
+        height: 80vh;
+        max-height: 80vh;        
+        max-width: 55vw;
+        flex-direction: column;
+      }
+
+      .slide-navigation-container {
+        width: 45vh;
+        display: inherit;
+        justify-content: space-between;
+        flex-direction: row;
+        /* height: 5vh; */
+        /* margin-bottom: 6em; */
+      }
+
+      .album-navigation {
+        width: 30vw;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .spacer {
+        height: 20vh
+      }
+
+      .album-data-container {
+        max-width: 10vw;
+      }
+
+      .tags {
+        /* color: darkgray; */
+        font-size: smaller;
+      }
+
+      /* Hide the images by default */
+      .mySlides {
+        display: none;
+      }
+
+      img {
+        max-height: 75vh;
+        max-width: 100%;
+      }
+
+
+      /* On hover, add a black background color with a little bit see-through */
+      .prev:hover, .next:hover {
+        background-color: black;
+        color: white
+      }
+
+      .album-nav-label:hover {
+        background-color: dodgerblue;
+        color: white   
+      }
+
+      .playback:hover {
+        background-color: firebrick;
+        color: white   
+      }
+
+      /* Fading animation */
+      .fade {
+        animation-name: fade;
+        animation-duration: 1s;
+        animation-timing-function: ease-in-out
+      }
+
+      @keyframes fade {
+        from {opacity: 0.5}
+        to {opacity: 1}
+      }
+
+      tr:nth-child(even) {background-color: #f2f2f2;}
+    </style>
+    <script>
+      let albumIndex = 0
+      let slideIndex = 0
+      let floatiesData = [] // array of albums
+      let randomAlbums = [] // [7, 4, 1, etc.] values correspond to place in floatiesData
+      let randomAlbumsIx = 0 // pointer to current place in randomAlbums
+      let isPlaying = false
+      let playAll = false
+      let playRandom = false
+      
+      function shuffle(arr) {
+        let i = arr.length
+        let j = 0
+        let temp = {}
+
+        while (i--) {
+            j = Math.floor(Math.random() * (i+1));
+            // swap randomly chosen element with current element
+            temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+        return arr;
+      }
+
+      function shuffleIndexes(arr) {
+        let indexes = arr.map( (e,i) => i)
+        return shuffle(indexes)
+      }
+
+      function htmlToElement(html) {
+        const template = document.createElement('template');
+        html = html.trim(); // Never return a text node of whitespace as the result
+        template.innerHTML = html;
+        return template.content.firstChild;
+      }
+      
+      function createSlide(imgHtml) {
+        const img = document.createElement('img')
+        const url = 'https://from-the-tubes.s3.amazonaws.com/img/butdoesitfloat/'
+
+        img.src = url + imgHtml.name
+
+        const imgDisplay = `
+          <div class="mySlides fade">
+            <img src=${url + imgHtml.name} ">
+          </div>`
+
+        return htmlToElement(imgDisplay)        
+      }
+
+      function populateAlbumData(album) {
+        const albumTitle = album['title']
+        const albumTags = album['tags']
+        let worksAttr = album['attributions']['works_attr']
+        const titleAttr = album['attributions']['title_attr']
+        const link = album['link']
+
+        const re = /by([^\s:])/
+        const matches = worksAttr.match(re)
+        if(matches) {
+          worksAttr = worksAttr.replace(' by', ' by ')
+        }
+
+        const albumDataDisplay = `
+          <div>            
+            <p class="album-title">${albumTitle}</p>
+            <p>${titleAttr.length > 0 ? `<i>- ${titleAttr}</i>` : ''}</p>
+            <br />
+            <p>${worksAttr.length > 0 ? worksAttr : ''}</p>
+            <br />
+            <br />
+            <div><a href=${link}>Link</a></div>
+            <br />
+            <div class="tags">tags: ${albumTags}</div>
+          </div>`
+
+        return htmlToElement(albumDataDisplay)        
+      }
+
+      function loadSlides(arr, n) {
+        if (n > arr.length - 1) {
+          albumIndex = 0
+        }
+        if (n < 0) {
+          albumIndex = arr.length - 1
+        }
+
+        const currAlbum = arr[albumIndex]
+        const currAlbumLen = currAlbum['images'].length
+
+        const content_template = currAlbum['content_template']
+        const edited_template = content_template.replaceAll('}{', '}\n{')
+        const re = /{.*}/g
+        const imgListRaw = edited_template.match(re)
+        const imgList = imgListRaw.map(i => {
+          if (i.includes('scale')) {
+            const ix = i.search(' scale')
+            return i.slice(0, ix) + '}'
+          }
+          else return i
+        })
+
+        const imgData = currAlbum['images']
+        const imgObj = imgData.reduce((obj, cur) => (
+          { ...obj, [cur.image_ref]: {"name": cur.name}}), {})
+        const imgHtml = imgList.map(i => imgObj[i])
+
+        const slideshowContainer = document.getElementsByClassName("slideshow-container")[0]
+        slideshowContainer.replaceChildren()
+
+        imgHtml.forEach((img, ix) => {
+          const slide = createSlide(img)
+          slideshowContainer.appendChild(slide) 
+        })
+
+        const albumDataContainer = document.getElementsByClassName("album-data")[0]
+        albumDataContainer.replaceChildren()
+
+        const albumData = populateAlbumData(currAlbum)
+        albumDataContainer.appendChild(albumData)
+
+        if (!playRandom) {
+          slideIndex = 0
+        } else {
+          slideIndex = shuffleIndexes(imgHtml)[0]
+        }
+
+        showSlides(slideIndex)
+      }
+
+      // Next/previous controls
+      function plusSlides(n) {
+        slideIndex += n
+        showSlides(slideIndex);
+      }
+
+      function plusAlbums(n) {
+        loadSlides(floatiesData, albumIndex += n);
+        slideIndex = 0
+        showSlides(slideIndex)
+      }
+
+      function initRandom() {
+        randomAlbums = shuffleIndexes(floatiesData)
+        randomAlbumsIx = 0
+      }
+
+      function randomAlbum() {
+        albumIndex = randomAlbums[randomAlbumsIx]
+        loadSlides(floatiesData, albumIndex)
+
+        slideIndex = 0
+        showSlides(slideIndex)
+
+        randomAlbumsIx += 1
+      }
+
+      function showSlides(n) {
+        let slides = document.getElementsByClassName("mySlides");
+        
+        if (n > slides.length - 1) {
+          slideIndex = 0
+        }
+        
+        if (n < 0) {
+          slideIndex = slides.length - 1
+        }
+        
+        for (let i = 0; i < slides.length; i++) {
+          slides[i].style.display = "none";
+        }
+
+        slides[slideIndex].style.display = "block";
+
+      }
+      
+      function playSlideshow(option) {
+        let toggle = isPlaying ? false : true
+        
+        if(isPlaying) {
+          //pause slideshow          
+          isPlaying = false
+          playAll = false
+          playRandom = false
+        } else {
+          isPlaying = true
+          // set flags and play slideshow
+          if (option == 'this') {
+            playAll = false
+            playRandom = false
+          }
+          if (option == 'all') {
+            playAll = true
+            playRandom = false
+          }
+          if (option == 'random') {
+            playAll = false
+            playRandom = true
+          }
+          playSlides()   
+        }
+
+        // prevent user from navigating during slideshow
+        toggleNavigation()
+      }
+
+      function toggleNavigation() {
+        const slideNavigation = document.getElementsByClassName("slide-navigation-container")[0]
+        const albumNavigation = document.getElementsByClassName("album-navigation")[0]
+
+        if(isPlaying) {
+          slideNavigation.style.pointerEvents = "none"
+          albumNavigation.style.pointerEvents = "none"
+        } else {
+          slideNavigation.style.pointerEvents = "auto"
+          albumNavigation.style.pointerEvents = "auto"          
+        }
+      }
+
+      function playSlides() {
+        let slides = document.getElementsByClassName("mySlides")
+
+        if (slideIndex > slides.length - 1) {
+          slideIndex = 0
+        }
+
+        for (let i = 0; i < slides.length; i++) {
+          slides[i].style.display = "none"
+        }
+
+        slides[slideIndex].style.display = "block"
+
+        if(isPlaying) {
+          setTimeout(playSlides, 2000)
+          slideIndex += 1
+
+          if(playAll) {
+            if (slideIndex > slides.length - 1) {
+              albumIndex += 1
+              loadSlides(floatiesData, albumIndex)
+              showSlides(slideIndex)
+            }
+          }
+
+          if(playRandom) {
+            albumIndex = randomAlbums[randomAlbumsIx]
+            loadSlides(floatiesData, albumIndex)
+
+            let randomImageIx = shuffleIndexes(floatiesData[albumIndex]['images'])[0]
+            slideIndex = randomImageIx
+            showSlides(slideIndex)
+
+            randomAlbumsIx += 1
+          }
+        }
+      }
+
+      function fetchSlideData(albumIndex, slideIndex) {
+        fetch("https://floaties.s3.us-west-1.amazonaws.com/bdif_combined_clean.json")
+        .then(response => response.json())
+        .then(json => {
+          // json = json.reverse()
+          floatiesData = json
+
+          // initial render
+          loadSlides(json, albumIndex)
+          showSlides(slideIndex)
+          initRandom() // load shuffled order for use when needed
+        });
+      }
+
+      fetchSlideData(albumIndex,slideIndex)
+    </script>
+  </head>
+  <body>
+    <div class="layout-container">
+      <div class="left-container">
+        <div class="slideshow-container">
+        </div>
+        <div class="slide-navigation-container">
+          <div class="prev">
+            <a id="prev" onclick="plusSlides(-1)">Previous image</a>
+          </div>
+          <div class="next">
+            <a id="next" onclick="plusSlides(1)">Next image</a>
+          </div>
+        </div>
+      </div>
+
+    <div class="right-container">
+      <div class="album-navigation">
+        <div>
+          <a class="album-nav-label" onclick="plusAlbums(-1)">Previous set</a>
+        </div>
+        <div>
+          <a class="album-nav-label" onclick="randomAlbum()">Random set</a>
+        </div>
+        <div>
+          <a class="album-nav-label" onclick="plusAlbums(1)">Next set</a>
+        </div>
+      </div>
+      <div class="album-data"></div>
+      <div class="album-navigation">
+        <div>
+          <a class="playback" onclick="playSlideshow('this')">Loop this set</a>
+        </div>
+        <div>
+          <a class="playback" onclick="playSlideshow('all')">Loop through all</a>
+        </div>
+        <div>
+          <a class="playback" onclick="playSlideshow('random')">Shuffle</a>
+        </div>
+      </div>
+    </div>
+    </div>
+
+  </body>
+
+</html>

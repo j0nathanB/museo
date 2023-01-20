@@ -1,0 +1,134 @@
+body {
+  font-family: 'Courier Prime', 'courier', 'monospace';
+  /* padding: 2vh;   */
+}
+* {box-sizing:border-box}
+.slides {display: none}
+
+.layout-container {
+  display: flex;
+  padding: 2vw;
+}
+.left-container {
+  width: 60vw;
+  height: 90vh;
+  display: flex;
+  align-items: center; 
+  justify-content: space-between;
+  flex-direction: column;
+  padding: 0 2vw 2vw 0;
+  border-right: black dashed 1px;
+}
+.right-container {
+  display: flex;
+  align-items: flex-start; 
+  justify-content: space-between;
+  flex-direction: column;
+  width: 40vw;
+  padding: 2vw;
+}
+.top-right {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+.album-fraction, .slide-fraction {
+  /* font-size: smaller; */
+  color: darkgray;
+}
+
+/* Slideshow container */
+.slideshow-container {
+  display: flex;
+  justify-content: center;
+  align-items: center; 
+  height: 80vh;
+  max-height: 80vh;        
+  max-width: 55vw;
+  flex-direction: column;
+}
+
+.left-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.slide-navigation-container {
+  width: 35vw;
+  display: inherit;
+  justify-content: space-between;
+  flex-direction: row;
+  /* height: 5vh; */
+  /* margin-bottom: 6em; */
+}
+
+.slide-fraction {
+  margin-top: 2em;
+}
+
+.album-navigation {
+  width: 30vw;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2em;
+}
+
+.spacer {
+  height: 20vh
+}
+
+.album-data-container {
+  max-width: 10vw;
+}
+
+.tags {
+  /* color: darkgray; */
+  font-size: smaller;
+}
+
+/* Hide the images by default */
+.slides {
+  display: none;
+}
+
+img {
+  max-height: 75vh;
+  max-width: 100%;
+}
+
+
+/* On hover, add a black background color with a little bit see-through */
+.prev:hover, .next:hover {
+  background-color: black;
+  color: white
+}
+
+.album-nav-label:hover {
+  background-color: black;
+  color: white   
+}
+
+.playback:hover {
+  background-color: black;
+  color: white   
+}
+
+.disable {
+  pointer-events: none;
+  color: lightgray
+}
+
+/* Fading animation */
+.fade {
+  animation-name: fade;
+  animation-duration: 6s;
+  animation-timing-function: ease-in-out
+}
+
+@keyframes fade {
+  0%,100% { opacity: 0 }
+  50% { opacity: 1 }
+}
+
+tr:nth-child(even) {background-color: #f2f2f2;}

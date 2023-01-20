@@ -1,326 +1,388 @@
-      class Slideshow {
-        constructor(floaties) {
-          this.albumIndex = 0;
-          this.albumLength = 0;
-          this.slideIndex = 0;
-          this.floatiesData = floaties; // array of albums
-          this.randomAlbums = []; // [7, 4, 1, etc.] values correspond to place in floatiesData
-          this.randomAlbumsIx = 0; // pointer to current place in randomAlbums
-          this.isPlaying = false;
-          this.playSet = false;
-          this.playAll = false;
-          this.playRandom = false;
-        }
+class Slides {
+  constructor() {
+    this.slides = [];
+    this.currentSlideIndex = 0;
+    this.baseUrl = 'https://floaties.s3.amazonaws.com/img/'
+    this.isPlaying = false
+  }
 
-        initRandom() {
-          this.randomAlbums = this.shuffleIndexes(this.floatiesData)
-        }
+  createSlide(imgHtml) {
+    const img = document.createElement("img");
+    img.setAttribute("src", `${this.baseUrl}${imgHtml.name}`);
+    const div = document.createElement("div");
+    div.classList.add("slides");
+    div.appendChild(img);
+    return div;
+  }
 
-        shuffle(arr) {
-          let i = arr.length
-          let j = 0
-          let temp = {}
+  renderSlides(imgData) {
+    const slideshowContainer = document.querySelector(".slideshow-container");
+    slideshowContainer.replaceChildren();
+
+    imgData.forEach((img) => {
+        const slide = this.createSlide(img);
+        slideshowContainer.appendChild(slide);
+    });
+
+    return imgData
+  }
+
+  navigateSlides(direction) {
+    this.showSlides(direction);
+  }
+
+  setSlideIndex(newIndex = 0) {
+    this.currentSlideIndex = newIndex
+  }
+
+  showSlides(direction = 0) {
+    let slides = this.getSlidesElement();
+    let newIndex = this.currentSlideIndex + direction;
+    this.albumLength = slides.length
+    this.currentSlideIndex = newIndex < 0 ? slides.length - 1 : newIndex % slides.length;
+
+    for (let i = 0; i < slides.length; i++) {
+      slides[i].style.display = "none";
+    }
+
+    if (this.isPlaying) {
+      slides[this.currentSlideIndex].classList.add('fade')
+    } else {
+      slides[this.currentSlideIndex].classList.remove('fade')
+    }
+    slides[this.currentSlideIndex].style.display = "block";
+    // this.showFraction(this.currentSlideIndex, slides.length)
+  }
+
+  getSlidesElement() {
+    return document.getElementsByClassName("slides")
+  }
+
+  shuffle(arr) {
+    let i = arr.length
+    let j = 0
+    let temp = {}
+
+    while (i--) {
+        j = Math.floor(Math.random() * (i+1));
+        temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+    return arr;
+  }
+
+  shuffleIndexes(arr) {
+    let indexes = arr.map( (e,i) => i)
+    return this.shuffle(indexes)
+  }
+
+  showFraction(num, denom){
+    const slideFractionDiv = document.getElementsByClassName("slide-fraction")[0]
+    slideFractionDiv.innerHTML = `${num + 1} / ${denom}`
+  }
+}
+
+class Album {
+  constructor(data) {
+    this.title = data.title;
+    this.tags = data.tags;
+    this.attributions = data.attributions;
+    this.titleAttr = data.attributions.title_attr
+    this.worksAttr = data.attributions.works_attr;
+    this.link = data.link;
+    this.images = data.images;
+    this.template = data.content_template
+    this.albumLength = 0 // we set this in extractImageData
+  }
+
+  loadAlbum() {
+    this.updateAlbumDataDisplay()
+    // if (!this.playRandom) {
+    //   slideIndex = 0
+    // } else {
+    //   slideIndex = this.shuffleIndexes(imgData)[0]
+    // }
+    this.renderImages()
+  }
+
+  extractImageReferences(contentTemplate) {
+    const re = /{.*}/g
+    const editedTemplate = contentTemplate.replaceAll('}{', '}\n{')
+    return editedTemplate.match(re)
+  }
   
-          while (i--) {
-              j = Math.floor(Math.random() * (i+1));
-              temp = arr[i];
-              arr[i] = arr[j];
-              arr[j] = temp;
-          }
-          return arr;
-        }
+  removeScale(imageReference) {
+    if (imageReference.includes('scale')) {
+      const ix = imageReference.search(' scale')
+      return imageReference.slice(0, ix) + '}'
+    } else {
+      return imageReference
+    }
+  }
   
-        shuffleIndexes(arr) {
-          let indexes = arr.map( (e,i) => i)
-          return this.shuffle(indexes)
-        }
-
-        createSlide(imgHtml) {
-          const url = 'https://floaties.s3.amazonaws.com/img/';
-          const img = document.createElement("img");
-          img.setAttribute("src", `${url}${imgHtml.name}`);
-          const div = document.createElement("div");
-          div.classList.add("slides");
-          div.appendChild(img);
-          return div;
-        }
-
-        createAndRenderSlides() {
-          const album = this.floatiesData[this.albumIndex]
-          const images = album['images']
-          const slideshowContainer = document.querySelector(".slideshow-container");
-          slideshowContainer.replaceChildren();
+  extractImageData(contentTemplate, images) {
+    const imageReferences = this.extractImageReferences(contentTemplate)
+    const cleanedReferences = imageReferences.map(this.removeScale)
+    const imageLookup = images.reduce((obj, cur) => (
+      { ...obj, [cur.image_ref]: {"name": cur.name}}), {})
   
-          let imgData = this.extractImageData(album, images)
+    return cleanedReferences.map(ref => imageLookup[ref])
+  }
 
-          imgData.forEach((img) => {
-              const slide = this.createSlide(img);
-              slideshowContainer.appendChild(slide);
-          });
+  cleanAttribution(attribution) {
+    const re = /by([^\s:])/
+    const matches = attribution.match(re)
+    if(matches) {
+      attribution = attribution.replace(' by', ' by ')
+    }
 
-          return imgData
-        }
+    return attribution
+  }
 
-        extractImageReferences(contentTemplate) {
-          const re = /{.*}/g
-          const editedTemplate = contentTemplate.replaceAll('}{', '}\n{')
-          return editedTemplate.match(re)
-        }
-        
-        removeScale(imageReference) {
-          if (imageReference.includes('scale')) {
-            const ix = imageReference.search(' scale')
-            return imageReference.slice(0, ix) + '}'
-          } else {
-            return imageReference
-          }
-        }
-        
-        extractImageData(album, images) {
-          const imageReferences = this.extractImageReferences(album.content_template)
-          const cleanedReferences = imageReferences.map(this.removeScale)
-          const imageLookup = images.reduce((obj, cur) => (
-            { ...obj, [cur.image_ref]: {"name": cur.name}}), {})
-        
-          return cleanedReferences.map(ref => imageLookup[ref])
-        }
+  formatAlbumData(title, titleAttr, worksAttr, tags, link) {
+    let albumData = `<div>`;
+    albumData += `<p class="album-title">${title}</p>`;
+    if (titleAttr.length > 0) {
+      albumData += `<p><i>- ${titleAttr}</i></p>`;
+    }
+    if (worksAttr.length > 0) {
+      albumData += `<br/><p>${worksAttr}</p>`;
+    }
+    albumData += `<br/><br/><div class="tags">${tags}</div>`;
+    albumData += `<br/><div><a href=${link}>Link</a></div>`;
+    albumData += `<br/></div>`;
+    return htmlToElement(albumData);
+  }
 
-        navigateAlbum(direction) {
-          let newIndex = this.albumIndex + direction;
-          this.albumIndex = newIndex < 0 ? this.floatiesData.length - 1 : newIndex % this.floatiesData.length;
-          this.loadSlidesAndAlbumData(this.albumIndex);
-        }
+  getAlbumData(album) {
+    this.title = album.title;
+    this.tags = album.tags;
+    this.attributions = album.attributions;
+    this.titleAttr = album.attributions.title_attr
+    this.worksAttr = this.cleanAttribution(album.attributions.works_attr);
+    this.link = album.link;
+    this.images = album.images;
+    this.template = album.content_template         
+  }
 
-        loadSlidesAndAlbumData(newIndex=0) {
-          this.albumIndex = newIndex < 0 ? this.floatiesData.length - 1 : newIndex % this.floatiesData.length;
-          const imgData = this.createAndRenderSlides()
+  updateAlbumDataDisplay() {
+    const albumDataContainer = document.getElementsByClassName("album-data")[0];
+    albumDataContainer.replaceChildren();
+    const albumData = this.formatAlbumData(this.title, this.titleAttr, this.worksAttr, this.tags, this.link);
+    albumDataContainer.appendChild(albumData);
+    // this.showFraction(this.albumIndex, this.totalAlbums)
+  }
 
-          const album = this.floatiesData[this.albumIndex]
-          this.updateAlbumData(album)
+  renderImages() {
+    // code to render the album's images
+    const imageData = this.extractImageData(this.template, this.images)
+    this.albumLength = imageData.length
+    return imageData
+  }
 
-          if (!this.playRandom) {
-            this.slideIndex = 0
-          } else {
-            this.slideIndex = this.shuffleIndexes(imgData)[0]
-          }
-          this.showSlides(this.slideIndex)
-        }
+  showFraction(num, denom){
+    const albumFractionDiv = document.getElementsByClassName("album-fraction")[0]
+    albumFractionDiv.innerHTML = `${num + 1} / ${denom}<br /><br />`
+  }
+}
 
-        extractAlbumData(album) {
-          return {
-            albumTitle: album['title'],
-            albumTags: album['tags'],
-            worksAttr: album['attributions']['works_attr'],
-            titleAttr: album['attributions']['title_attr'],
-            link: album['link']
-          }
-        }
-  
-        cleanAttribution(attribution) {
-          const re = /by([^\s:])/
-          const matches = attribution.match(re)
-          if(matches) {
-            attribution = attribution.replace(' by', ' by ')
-          }
+class Slideshow {
+  constructor(floaties) {
+    this.albumIndex = 0;
+    this.slideIndex = 0;
+    this.albumCollection = floaties; // array of albums
+    this.randomAlbums = this.shuffleIndexes(this.albumCollection); // [7, 4, 1, etc.] values correspond to place in albumCollection
+    this.randomAlbumsIx = 0; // pointer to current place in randomAlbums
+    this.isPlaying = false;
+    this.playMode = ""
+    this.slides = new Slides();
+    this.album = new Album(this.albumCollection[0])
+  }
 
-          return attribution
-        }
+  shuffle(arr) {
+    let i = arr.length
+    let j = 0
+    let temp = {}
 
-        formatAlbumData(title, titleAttr, worksAttr, tags, link) {
-          let albumData = `<div>`;
-          albumData += `<p class="album-title">${title}</p>`;
-          if (titleAttr.length > 0) {
-            albumData += `<p><i>- ${titleAttr}</i></p>`;
-          }
-          if (worksAttr.length > 0) {
-            albumData += `<br/><p>${worksAttr}</p>`;
-          }
-          albumData += `<br/><br/><div class="tags">${tags}</div>`;
-          albumData += `<br/><div><a href=${link}>Link</a></div>`;
-          albumData += `<br/></div>`;
-          return albumData;
-        }
+    while (i--) {
+        j = Math.floor(Math.random() * (i+1));
+        temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+    return arr;
+  }
 
-        populateAlbumData(album) {
-          const albumData = this.extractAlbumData(album)
-          albumData.worksAttr = this.cleanAttribution(albumData.worksAttr)
-          const albumTitle = albumData['albumTitle']
-          const titleAttr = albumData['titleAttr']
-          const worksAttr = albumData['worksAttr']
-          const albumTags = albumData['albumTags']
-          const link = albumData['link']
+  shuffleIndexes(arr) {
+    let indexes = arr.map( (e,i) => i)
+    return this.shuffle(indexes)
+  }
 
-          const albumDataDisplay = this.formatAlbumData(albumTitle, titleAttr, worksAttr, albumTags, link);
-          return htmlToElement(albumDataDisplay)    
-        }
+  navigateAlbum(direction = 0) {
+    let newIndex = this.albumIndex + direction;
+    this.albumIndex = newIndex < 0 ? this.albumCollection.length - 1 : newIndex % this.albumCollection.length;
+    this.loadAlbum(this.albumIndex)
+    this.displaySlides()
+  }
 
-        updateAlbumData(album) {
-          const albumDataContainer = document.getElementsByClassName("album-data")[0];
-          albumDataContainer.replaceChildren();
-          const albumData = this.populateAlbumData(album);
-          albumDataContainer.appendChild(albumData);
-          this.showFraction('album', this.albumIndex, this.floatiesData.length)
-        }
+  loadAlbum(albumIndex = 0) {
+    this.album.getAlbumData(this.albumCollection[albumIndex])
+    this.album.loadAlbum()
+  }
 
-        navigateSlide(direction) {
-          this.showSlides(direction);
-        }
+  displaySlides(slideIndex = 0) {
+    this.slides.renderSlides(this.album.renderImages())
+    this.slides.setSlideIndex(slideIndex)
+    this.slides.showSlides()
+  }
 
+  navigateSlides(direction = 0) {
+    this.slides.navigateSlides(direction);
+  }
 
-        showSlides(direction) {
-          let slides = document.getElementsByClassName("slides");
-          let newIndex = this.slideIndex + direction;
-          this.albumLength = slides.length
-          this.slideIndex = newIndex < 0 ? slides.length - 1 : newIndex % slides.length;
+  playSlideshow(playbackOption) {
+    const isPlaying = !this.isPlaying;
+    this.isPlaying = isPlaying;
+    this.slides.isPlaying = this.isPlaying
+    this.playMode = playbackOption
 
-          for (let i = 0; i < slides.length; i++) {
-            slides[i].style.display = "none";
-          }
-
-          slides[this.slideIndex].style.display = "block";
-          this.showFraction('slides', this.slideIndex, slides.length)
-        }
-
-        playSlideshow(option) {
-          const slides = Array.from(document.getElementsByClassName('slides'))
-          const isPlaying = !this.isPlaying;
-          this.isPlaying = isPlaying;
-
-          if(this.isPlaying) {
-            slides.forEach(s => s.classList.add('fade'))
-              this.playSet = option === 'set'
-              this.playAll = option === 'all';
-              this.playRandom = option === 'random';
-              this.playSlides(slides);
-          } else {
-              slides.forEach(s => s.classList.remove('fade'))
-              this.playSet = false;
-              this.playAll = false;
-              this.playRandom = false;
-              // this.slideIndex -= 1;
-
-          }
-          this.toggleNavigation();
-        }
-
-        playSlides() {
-          if(this.isPlaying) {
-            // showFraction('slides', this.slideIndex, this.albumLength)
-            setTimeout(() => this.playSlides(), 6000)
-            this.playImageSet()
-            this.playAllSets()
-            this.playRandomImages()
-          }
-        }
+    if(this.isPlaying) {
+        this.playSlides(playbackOption);
+    } else {
+        this.playMode = ""
+        this.slides.showSlides(-1)
+        // slides.forEach(s => s.classList.remove('fade'))
+    }
+    this.toggleNavigation(playbackOption);
+  }
 
 
-
-        playImageSet() {
-            this.showSlides(0)
-            this.slideIndex += 1
-        }
-
-        playAllSets() {
-          if(this.playAll) {
-            if (this.slideIndex > this.albumLength - 1) {
-              this.albumIndex += 1
-              this.loadSlidesAndAlbumData(this.albumIndex)
-              const slides = Array.from(document.getElementsByClassName('slides'))
-              slides.forEach(s => s.classList.add('fade'))
-              this.showSlides(0)
-              this.slideIndex += 1
-            }
-          }
-        }
-
-        playRandomImages() {
-          if(this.playRandom) {
-            this.albumIndex = this.randomAlbums[this.randomAlbumsIx]
-            this.loadSlidesAndAlbumData(this.albumIndex)
-
-            let randomImageIx = this.shuffleIndexes(this.floatiesData[albumIndex]['images'])[0]
-            this.slideIndex = randomImageIx
-            const slides = Array.from(document.getElementsByClassName('slides'))
-            slides.forEach(s => s.classList.add('fade'))
-            this.showSlides(this.slideIndex)
-
-            this.randomAlbumsIx += 1
-          }    
-        }
-
-        randomAlbum() {
-          this.albumIndex = this.randomAlbums[this.randomAlbumsIx]
-          this.loadSlidesAndAlbumData(this.albumIndex)
-  
-          this.slideIndex = 0
-          this.showSlides(slideIndex)
-  
-          this.randomAlbumsIx += 1
-        }
-
-        toggleNavigation() {
-          const slideNavigation = document.querySelector(".slide-navigation-container")
-          const albumNavigation = document.querySelector(".album-navigation")
-
-          slideNavigation.classList.toggle("disable");
-          albumNavigation.classList.toggle("disable");
-        }
-
-        showFraction(option, num, denom){
-          if(option == 'slides') {
-            const slideFractionDiv = document.getElementsByClassName("slide-fraction")[0]
-            slideFractionDiv.innerHTML = `${num + 1} / ${denom}`
-          } else {
-            const albumFractionDiv = document.getElementsByClassName("album-fraction")[0]
-            albumFractionDiv.innerHTML = `${this.albumIndex + 1} / ${denom}<br /><br />`
-          }
-        }
-
+  playSlides() {
+    if(this.isPlaying) {
+      setTimeout(() => this.playSlides(this.playMode), 6000)
+    
+      if(this.playMode == 'set') {
+        this.playImageSet()
+      } else if(this.playMode == 'all') {
+        this.playAllSets()
+      } else if(this.playMode = 'random') {
+        this.playRandomImages()
       }
+    }
+  }
 
-      
-      function htmlToElement(html) {
-        const template = document.createElement('template');
-        template.innerHTML = html.trim();
-        return template.content.children[0];
+  playAllSets() {
+      if (this.slides.currentSlideIndex == this.album.albumLength) {
+        this.albumIndex += 1
+        this.albumIndex = this.albumIndex == this.albumCollection.length ? 0 : this.albumIndex;
+
+        this.album.getAlbumData(this.albumCollection[this.albumIndex])
+        this.album.loadAlbum(this.albumIndex)
+        this.displaySlides()
       }
+      this.playImageSet()
+  }
 
-      async function fetchSlideData(albumIndex, slideIndex) {
-        const response = await fetch("https://floaties.s3.us-west-1.amazonaws.com/floaties.json");
-        const json = await response.json();
-        return json
+  playRandomImages() {
+    this.getRandomAlbum()
+    let randomImageIx = this.shuffleIndexes(this.albumCollection[this.albumIndex]['images'])[0]
+    this.displaySlides(randomImageIx)
+    this.randomAlbumsIx += 1
+  }
+
+  playImageSet() {
+      this.slides.showSlides()
+      this.slides.setSlideIndex(this.slides.currentSlideIndex + 1)
+  }
+
+  getRandomAlbum() {
+    this.albumIndex = this.randomAlbums[this.randomAlbumsIx]
+    this.album.getAlbumData(this.albumCollection[this.albumIndex])
+    this.album.loadAlbum(this.albumIndex)
+    this.randomAlbumsIx += 1
+  }
+
+  randomAlbum() {
+    this.getRandomAlbum()
+    this.displaySlides()
+  }
+
+  toggleNavigation(currentPlayBackOption = "") {
+    const slideNavigation = document.querySelector(".slide-navigation-container")
+    const albumNavigation = document.querySelector(".album-navigation")
+
+    slideNavigation.classList.toggle("disable");
+    albumNavigation.classList.toggle("disable");
+
+    const elements = {
+      set: document.getElementById('play-set'),
+      all: document.getElementById('play-all'),
+      random: document.getElementById('play-random')
+    }
+
+    Object.keys(elements).forEach(key => {
+      if (key !== currentPlayBackOption) {
+          elements[key].classList.toggle("disable");
       }
+    });
+  }
 
-      async function loadFunctionality() {
-        const floaties = await fetchSlideData(0,0)
-        const slideshow = new Slideshow(floaties)
+  showFraction(option, num, denom){
+    if(option == 'slides') {
+      const slideFractionDiv = document.getElementsByClassName("slide-fraction")[0]
+      slideFractionDiv.innerHTML = `${num + 1} / ${denom}`
+    } else {
+      const albumFractionDiv = document.getElementsByClassName("album-fraction")[0]
+      albumFractionDiv.innerHTML = `${this.albumIndex + 1} / ${denom}<br /><br />`
+    }
+  }
 
-        const prevSlide = document.getElementById('prev-slide');
-        prevSlide.addEventListener('click', () => slideshow.navigateSlide(-1), false );
+}
 
-        const nextSlide = document.getElementById('next-slide')
-        nextSlide.addEventListener('click', () => slideshow.navigateSlide(1), false )
 
-        const prevAlbum = document.getElementById('prev-album')
-        prevAlbum.addEventListener('click', () => slideshow.navigateAlbum(-1), false )
+function htmlToElement(html) {
+  const template = document.createElement('template');
+  template.innerHTML = html.trim();
+  return template.content.children[0];
+}
 
-        const randomAlbum = document.getElementById('random-album')
-        randomAlbum.addEventListener('click', () => slideshow.randomAlbum(), false )
+async function fetchAllData(albumIndex, slideIndex) {
+  const response = await fetch("https://floaties.s3.us-west-1.amazonaws.com/floaties.json");
+  const json = await response.json();
+  return json
+}
 
-        const nextAlbum = document.getElementById('next-album')
-        nextAlbum.addEventListener('click', () => slideshow.navigateAlbum(1), false )
+async function loadFunctionality() {
+  const floaties = await fetchAllData(0,0)
+  const slideshow = new Slideshow(floaties)
 
-        const playSet = document.getElementById('play-set')
-        playSet.addEventListener('click', () => slideshow.playSlideshow("set"), false )
+  const prevSlide = document.getElementById('prev-slide');
+  prevSlide.addEventListener('click', () => slideshow.navigateSlides(-1), false );
 
-        const playAll = document.getElementById('play-all')
-        playAll.addEventListener('click', () => slideshow.playSlideshow("all"), false )
+  const nextSlide = document.getElementById('next-slide')
+  nextSlide.addEventListener('click', () => slideshow.navigateSlides(1), false )
 
-        const playRandom = document.getElementById('play-random')
-        playRandom.addEventListener('click', () => slideshow.playSlideshow("random"), false )
+  const prevAlbum = document.getElementById('prev-album')
+  prevAlbum.addEventListener('click', () => slideshow.navigateAlbum(-1), false )
 
-        slideshow.initRandom()
-        slideshow.loadSlidesAndAlbumData()
-      }
+  const randomAlbum = document.getElementById('random-album')
+  randomAlbum.addEventListener('click', () => slideshow.randomAlbum(), false )
 
-      loadFunctionality()
+  const nextAlbum = document.getElementById('next-album')
+  nextAlbum.addEventListener('click', () => slideshow.navigateAlbum(1), false )
+
+  const playSet = document.getElementById('play-set')
+  playSet.addEventListener('click', () => slideshow.playSlideshow("set"), false )
+
+  const playAll = document.getElementById('play-all')
+  playAll.addEventListener('click', () => slideshow.playSlideshow("all"), false )
+
+  const playRandom = document.getElementById('play-random')
+  playRandom.addEventListener('click', () => slideshow.playSlideshow("random"), false )
+
+  slideshow.loadAlbum()
+  slideshow.displaySlides()
+}
+
+loadFunctionality()

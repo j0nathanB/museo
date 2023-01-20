@@ -6,9 +6,10 @@ class Slides {
     this.isPlaying = false
   }
 
-  createSlide(imgHtml) {
+  // create an individual slide from image data
+  createSlide(data) {
     const img = document.createElement("img");
-    img.setAttribute("src", `${this.baseUrl}${imgHtml.name}`);
+    img.setAttribute("src", `${this.baseUrl}${data.name}`);
     const div = document.createElement("div");
     div.classList.add("slides");
     div.appendChild(img);
@@ -23,8 +24,6 @@ class Slides {
         const slide = this.createSlide(img);
         slideshowContainer.appendChild(slide);
     });
-
-    return imgData
   }
 
   navigateSlides(direction) {
@@ -36,7 +35,8 @@ class Slides {
   }
 
   showSlides(direction = 0) {
-    let slides = this.getSlidesElement();
+    this.slides = this.getSlidesElement()
+    let slides = this.slides;
     let newIndex = this.currentSlideIndex + direction;
     this.albumLength = slides.length
     this.currentSlideIndex = newIndex < 0 ? slides.length - 1 : newIndex % slides.length;
@@ -45,7 +45,7 @@ class Slides {
       slides[i].style.display = "none";
     }
 
-    if (this.isPlaying) {
+    if(this.isPlaying) {
       slides[this.currentSlideIndex].classList.add('fade')
     } else {
       slides[this.currentSlideIndex].classList.remove('fade')
@@ -94,15 +94,11 @@ class Album {
     this.images = data.images;
     this.template = data.content_template
     this.albumLength = 0 // we set this in extractImageData
+    this.timeOutId = 0
   }
 
   loadAlbum() {
     this.updateAlbumDataDisplay()
-    // if (!this.playRandom) {
-    //   slideIndex = 0
-    // } else {
-    //   slideIndex = this.shuffleIndexes(imgData)[0]
-    // }
     this.renderImages()
   }
 
@@ -175,7 +171,6 @@ class Album {
   }
 
   renderImages() {
-    // code to render the album's images
     const imageData = this.extractImageData(this.template, this.images)
     this.albumLength = imageData.length
     return imageData
@@ -249,10 +244,15 @@ class Slideshow {
 
     if(this.isPlaying) {
         this.playSlides(playbackOption);
+        // console.log(this.slides.getSlidesElement()[this.slides.currentSlideIndex].classList)
     } else {
         this.playMode = ""
-        this.slides.showSlides(-1)
-        // slides.forEach(s => s.classList.remove('fade'))
+        // console.log(this.slides.getSlidesElement()[this.slides.currentSlideIndex].classList)
+        this.slides.getSlidesElement()[this.slides.currentSlideIndex].classList.remove('fade')
+        if(playbackOption != 'random'){
+          this.slides.showSlides(-1)
+        }
+        clearTimeout(this.timeOutId)
     }
     this.toggleNavigation(playbackOption);
   }
@@ -260,7 +260,7 @@ class Slideshow {
 
   playSlides() {
     if(this.isPlaying) {
-      setTimeout(() => this.playSlides(this.playMode), 6000)
+      this.timeOutId = setTimeout(() => this.playSlides(this.playMode), 6000)
     
       if(this.playMode == 'set') {
         this.playImageSet()
@@ -292,7 +292,7 @@ class Slideshow {
   }
 
   playImageSet() {
-      this.slides.showSlides()
+      this.displaySlides(this.slides.currentSlideIndex)
       this.slides.setSlideIndex(this.slides.currentSlideIndex + 1)
   }
 
@@ -337,7 +337,6 @@ class Slideshow {
       albumFractionDiv.innerHTML = `${this.albumIndex + 1} / ${denom}<br /><br />`
     }
   }
-
 }
 
 

@@ -302,9 +302,7 @@ class Slideshow {
   
   // slideshow of random images
   playRandomImages() {
-    this.getRandomAlbum()
-    let randomImageIx = this.shuffleIndexes(this.albumCollection[this.album.albumIndex]['images'])[0]
-    this.displaySlides(randomImageIx)
+    this.getRandomImage()
     this.randomAlbumsIx += 1
   }
 
@@ -321,6 +319,12 @@ class Slideshow {
     this.album.loadAlbum(this.album.albumIndex)
     this.updateAlbumCounter()
     this.randomAlbumsIx += 1
+  }
+
+  getRandomImage() {
+    this.getRandomAlbum()
+    let randomImageIx = this.shuffleIndexes(this.albumCollection[this.album.albumIndex]['images'])[0]
+    this.displaySlides(randomImageIx)
   }
 
   // shows a random album 
@@ -370,6 +374,9 @@ async function loadFunctionality() {
 
   const prevSlide = document.getElementById('prev-slide');
   prevSlide.addEventListener('click', () => slideshow.navigateSlides(-1), false );
+
+  const randomSlide = document.getElementById('random-slide')
+  randomSlide.addEventListener('click', () => slideshow.getRandomImage(), false )
 
   const nextSlide = document.getElementById('next-slide')
   nextSlide.addEventListener('click', () => slideshow.navigateSlides(1), false )

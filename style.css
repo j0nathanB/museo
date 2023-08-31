@@ -60,7 +60,7 @@ body {
   justify-content: space-between;
   flex-direction: row;
   /* height: 5vh; */
-  /* margin-bottom: 6em; */
+  margin-bottom: 2vh;
 }
 
 .slide-fraction {
@@ -75,7 +75,7 @@ body {
 }
 
 .spacer {
-  height: 20vh
+  height: 2vh
 }
 
 .album-data-container {

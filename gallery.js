@@ -238,13 +238,15 @@ class Slideshow {
   // update album counter
   updateAlbumCounter(){
     const albumCounterDiv = document.getElementsByClassName("album-counter")[0]
-    albumCounterDiv.innerHTML = `${this.album.albumIndex + 1} / ${this.albumCollection.length}<br /><br />`
+    const currentCollection = formatNumber(this.album.albumIndex + 1)
+    const totalCollections = formatNumber(this.albumCollection.length)
+    albumCounterDiv.innerHTML = `Collection ${currentCollection} of ${totalCollections}<br /><br />`
   }
 
   // update slide counter
   updateSlidesCounter(){
     const slideCounterDiv = document.getElementsByClassName("slide-counter")[0]
-    slideCounterDiv.innerHTML = `${this.slides.currentSlideIndex + 1} / ${this.slides.slides.length}`
+    slideCounterDiv.innerHTML = `Image ${this.slides.currentSlideIndex + 1} of ${this.slides.slides.length}`
   }
 
   // sets state variables before playing, resets them when paused
@@ -335,10 +337,13 @@ class Slideshow {
 
   // turn navigation on or off when the slideshow is playing
   toggleNavigation(currentPlayBackOption = "") {
-    const slideNavigation = document.querySelector(".slide-navigation-container")
+    // Disable individual slide navigation buttons instead of the whole container
+    const prevSlide = document.getElementById('prev-slide')
+    const nextSlide = document.getElementById('next-slide')
     const albumNavigation = document.querySelector(".album-navigation")
 
-    slideNavigation.classList.toggle("disable");
+    prevSlide.classList.toggle("disable");
+    nextSlide.classList.toggle("disable");
     albumNavigation.classList.toggle("disable");
 
     const elements = {
@@ -362,6 +367,13 @@ function htmlToElement(html) {
   return template.content.children[0];
 }
 
+function formatNumber(num) {
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// Make formatNumber available globally for testing
+window.formatNumber = formatNumber;
+
 async function fetchAllData() {
   const response = await fetch("https://floaties.s3.us-west-1.amazonaws.com/floaties.json");
   const data = await response.json();
@@ -375,8 +387,16 @@ async function loadFunctionality() {
   const prevSlide = document.getElementById('prev-slide');
   prevSlide.addEventListener('click', () => slideshow.navigateSlides(-1), false );
 
-  const randomSlide = document.getElementById('random-slide')
-  randomSlide.addEventListener('click', () => slideshow.getRandomImage(), false )
+  const playPause = document.getElementById('play-pause')
+  playPause.addEventListener('click', () => {
+    if (slideshow.isPlaying) {
+      slideshow.playSlideshow(slideshow.playMode) // Stop current playback
+      playPause.textContent = 'Play'
+    } else {
+      slideshow.playSlideshow("set") // Start playing current set
+      playPause.textContent = 'Pause'
+    }
+  }, false )
 
   const nextSlide = document.getElementById('next-slide')
   nextSlide.addEventListener('click', () => slideshow.navigateSlides(1), false )
@@ -391,13 +411,22 @@ async function loadFunctionality() {
   nextAlbum.addEventListener('click', () => slideshow.navigateAlbum(1), false )
 
   const playSet = document.getElementById('play-set')
-  playSet.addEventListener('click', () => slideshow.playSlideshow("set"), false )
+  playSet.addEventListener('click', () => {
+    slideshow.playSlideshow("set")
+    playPause.textContent = slideshow.isPlaying ? 'Pause' : 'Play'
+  }, false )
 
   const playAll = document.getElementById('play-all')
-  playAll.addEventListener('click', () => slideshow.playSlideshow("all"), false )
+  playAll.addEventListener('click', () => {
+    slideshow.playSlideshow("all")
+    playPause.textContent = slideshow.isPlaying ? 'Pause' : 'Play'
+  }, false )
 
   const playRandom = document.getElementById('play-random')
-  playRandom.addEventListener('click', () => slideshow.playSlideshow("random"), false )
+  playRandom.addEventListener('click', () => {
+    slideshow.playSlideshow("random")
+    playPause.textContent = slideshow.isPlaying ? 'Pause' : 'Play'
+  }, false )
 
   slideshow.loadAlbum()
   slideshow.displaySlides()

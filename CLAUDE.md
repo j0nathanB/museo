@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Peroflota is a web-based image gallery inspired by butdoesitfloat.com. It's a vanilla JavaScript application that displays curated image collections with slideshow functionality.
+Museo is a web-based image gallery inspired by butdoesitfloat.com. It's a vanilla JavaScript application that displays curated image collections with slideshow functionality.
 
 ## Architecture
 
@@ -53,11 +53,57 @@ The project now uses Test-Driven Development with Cypress for E2E testing:
 - `cypress/e2e/responsive-design.cy.js` - UI responsiveness and visual tests
 - `cypress/support/commands.js` - Custom Cypress commands for the app
 
-### TDD Workflow
-1. Write failing tests first to define expected behavior
-2. Implement minimal code to make tests pass
-3. Refactor while keeping tests green
-4. Run `npm test` to verify all functionality
+## **MANDATORY TDD WORKFLOW**
+
+**For ANY code changes, feature additions, or bug fixes, you MUST follow this Test-Driven Development process:**
+
+### Step 1: Write Failing Tests First
+1. **Analyze the requirement** - Understand what needs to be implemented or changed
+2. **Write comprehensive Cypress tests** that describe the desired behavior:
+   - Add tests to appropriate spec files in `cypress/e2e/`
+   - Use descriptive test names that explain the expected behavior
+   - Include both positive and negative test cases
+   - Test user interactions, visual elements, and functionality
+3. **Run tests to confirm they fail**: Execute `npm test` and verify the new tests fail as expected
+
+### Step 2: Implement Minimal Code
+1. **Write only enough code** to make the failing tests pass
+2. **Follow the existing code patterns** and architecture
+3. **Make changes in this order of preference**:
+   - Update JavaScript logic in `gallery.js`
+   - Modify HTML structure in `index.html` 
+   - Adjust styling in `style.css`
+
+### Step 3: Verify Tests Pass
+1. **Run the full test suite**: `npm test`
+2. **Ensure ALL tests pass** (both new and existing)
+3. **If tests fail**: Debug and fix until all tests are green
+
+### Step 4: Refactor and Validate
+1. **Run manual testing**: `npm run serve` and verify functionality works in browser
+2. **Refactor code if needed** while keeping tests green
+3. **Ensure no regressions** by running tests again after any refactoring
+
+### TDD Test Writing Guidelines
+- **Use existing custom commands**: `cy.waitForSlideshow()`, `cy.waitForImageLoad()`
+- **Test user interactions**: Click events, navigation, playback controls
+- **Verify visual elements**: Text content, CSS classes, element visibility
+- **Check data integration**: API responses, counter updates, image loading
+- **Include edge cases**: Empty states, error conditions, boundary values
+- **Write readable test descriptions** that explain user behavior, not implementation details
+
+### Example TDD Implementation:
+```javascript
+// 1. Write failing test first
+it('should display user-friendly navigation labels', () => {
+  cy.get('.slide-counter').should('match', /Image \d+ of \d+/)
+  cy.get('#prev-album').should('contain', 'Previous collection')
+})
+
+// 2. Run tests - they should fail
+// 3. Implement minimal changes to make tests pass
+// 4. Run tests again - they should now pass
+```
 
 ### Code Patterns
 - Uses ES6 classes and async/await
@@ -76,3 +122,13 @@ The project now uses Test-Driven Development with Cypress for E2E testing:
 - Cypress configured for localhost:8080
 - Custom commands for slideshow-specific interactions
 - Tests cover navigation, data loading, responsiveness, and error handling
+
+## **CRITICAL REMINDERS**
+
+1. **NEVER implement features without tests first**
+2. **ALWAYS run `npm test` before and after changes**
+3. **Ensure existing functionality remains intact**
+4. **Write tests that describe user behavior, not implementation details**
+5. **Keep the Red-Green-Refactor cycle tight and focused**
+
+Following this TDD approach ensures code quality, prevents regressions, and maintains the application's reliability.

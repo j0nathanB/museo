@@ -160,6 +160,9 @@ class Album {
     albumDataContainer.replaceChildren();
     const albumData = this.formatAlbumData(this.title, this.titleAttr, this.worksAttr, this.tags, this.link);
     albumDataContainer.appendChild(albumData);
+    
+    // Resize album titles to fit their containers
+    setTimeout(() => resizeAlbumTitles(), 10); // Small delay to ensure DOM is updated
   }
 
   // get image data for rendering
@@ -373,6 +376,26 @@ function formatNumber(num) {
 
 // Make formatNumber available globally for testing
 window.formatNumber = formatNumber;
+
+// Dynamic title resizing function
+function resizeAlbumTitles() {
+  const titles = document.querySelectorAll('.album-title');
+  titles.forEach(t => {
+    // Reset font size to original CSS value first
+    t.style.fontSize = '';
+    
+    // Set minimum font size to maintain readability
+    const minFontSize = 12; // 12px minimum
+    
+    while (t.scrollWidth > t.clientWidth && parseFloat(window.getComputedStyle(t).fontSize) > minFontSize) {
+      let size = parseFloat(window.getComputedStyle(t).fontSize);
+      t.style.fontSize = (size - 1) + "px";
+    }
+  });
+}
+
+// Make resizeAlbumTitles available globally for testing
+window.resizeAlbumTitles = resizeAlbumTitles;
 
 async function fetchAllData() {
   const response = await fetch("https://floaties.s3.us-west-1.amazonaws.com/floaties.json");

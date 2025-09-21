@@ -128,18 +128,37 @@ class Album {
 
   // format album data into an HTML string, then parse into DOM element
   formatAlbumData(title, titleAttr, worksAttr, tags, link) {
+    console.log('=== formatAlbumData called ===');
+    console.log('Title:', title);
+    console.log('TitleAttr:', titleAttr);
+    console.log('WorksAttr:', worksAttr);
+    
     let albumData = `<div>`;
+    
+    // Top content (title and titleAttr)
+    albumData += `<div class="top-content">`;
     albumData += `<p class="album-title">${title}</p>`;
     if (titleAttr.length > 0) {
       albumData += `<p><i>- ${titleAttr}</i></p>`;
     }
+    albumData += `</div>`;
+    
+    // Bottom content (worksAttr, tags, link) - fixed near play button
+    albumData += `<div class="bottom-content">`;
     if (worksAttr.length > 0) {
-      albumData += `<br/><p>${worksAttr}</p>`;
+      albumData += `<p>${worksAttr}</p>`;
     }
-    albumData += `<br/><br/><div class="tags">${tags}</div>`;
-    albumData += `<br/><div><a href=${link}>Link</a></div>`;
-    albumData += `<br/></div>`;
-    return htmlToElement(albumData);
+    albumData += `<div class="tags">${tags}</div>`;
+    albumData += `<div><a href=${link}>Link</a></div>`;
+    albumData += `</div>`;
+    
+    albumData += `</div>`;
+    
+    console.log('Generated HTML:', albumData);
+    const element = htmlToElement(albumData);
+    console.log('DOM Element:', element);
+    
+    return element;
   }
 
   // get album fields from an album
@@ -162,7 +181,8 @@ class Album {
     albumDataContainer.appendChild(albumData);
     
     // Resize album titles to fit their containers
-    setTimeout(() => resizeAlbumTitles(), 10); // Small delay to ensure DOM is updated
+    // Increased delay to prevent layout jank during navigation
+    setTimeout(() => resizeAlbumTitles(), 50); // Allow DOM to fully settle
   }
 
   // get image data for rendering
@@ -377,25 +397,52 @@ function formatNumber(num) {
 // Make formatNumber available globally for testing
 window.formatNumber = formatNumber;
 
-// Dynamic title resizing function
+// Dynamic content resizing function - images only, titles are fixed at 28px
 function resizeAlbumTitles() {
-  const titles = document.querySelectorAll('.album-title');
-  titles.forEach(t => {
-    // Reset font size to original CSS value first
-    t.style.fontSize = '';
+  console.log('=== Starting dynamic image resizing (titles fixed at 28px) ===');
+  
+  // Only resize images - titles are now fixed at 28px in CSS
+  resizeImages();
+  
+  console.log('=== Image resizing complete ===');
+}
+
+function resizeImages() {
+  const images = document.querySelectorAll('.slideshow-container img');
+  console.log(`Resizing ${images.length} images using calc() approach`);
+  
+  images.forEach(img => {
+    // Calculate total vertical spacing used by other elements
+    // Updated based on current CSS: layout padding + title space + button space
+    const layoutPadding = 32; // Only top padding from .layout-container (bottom removed)
+    const titleSpace = 100; // Title + reduced margins
+    const buttonSpace = 80; // Navigation buttons (reduced margins)
+    const safetyMargin = 30; // Extra safety margin for consistency
     
-    // Set minimum font size to maintain readability
-    const minFontSize = 12; // 12px minimum
+    const totalVerticalSpacing = layoutPadding + titleSpace + buttonSpace + safetyMargin;
     
-    while (t.scrollWidth > t.clientWidth && parseFloat(window.getComputedStyle(t).fontSize) > minFontSize) {
-      let size = parseFloat(window.getComputedStyle(t).fontSize);
-      t.style.fontSize = (size - 1) + "px";
-    }
+    console.log(`Calculated vertical spacing: ${totalVerticalSpacing}px`);
+    
+    // Set image to use remaining viewport height with object-fit
+    img.style.maxHeight = `calc(100vh - ${totalVerticalSpacing}px)`;
+    img.style.objectFit = 'contain'; // Maintain aspect ratio
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    
+    console.log(`Set image max-height to: calc(100vh - ${totalVerticalSpacing}px)`);
   });
 }
 
-// Make resizeAlbumTitles available globally for testing
+
+// Helper function to detect vertical scrollbars
+function hasVerticalScrollbars() {
+  // Check if document height exceeds viewport height
+  return document.documentElement.scrollHeight > window.innerHeight;
+}
+
+// Make functions available globally for testing
 window.resizeAlbumTitles = resizeAlbumTitles;
+window.resizeImages = resizeImages;
 
 async function fetchAllData() {
   const response = await fetch("https://floaties.s3.us-west-1.amazonaws.com/floaties.json");

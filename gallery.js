@@ -204,6 +204,7 @@ class Slideshow {
     this.slides = new Slides();
     this.album = new Album(this.albumCollection[0])
     this.timeOutId = 0
+    this.router = null; // Will be initialized later
   }
 
   // fisher-yates shuffle
@@ -227,6 +228,12 @@ class Slideshow {
     return this.shuffle(indexes)
   }
 
+  // initialize URL router
+  initializeRouter() {
+    this.router = new URLRouter(this);
+    this.router.initialize();
+  }
+
   // move to next or previous album
   navigateAlbum(direction = 0) {
     let newIndex = this.album.albumIndex + direction;
@@ -234,6 +241,11 @@ class Slideshow {
     this.loadAlbum(this.album.albumIndex)
     this.displaySlides()
     this.updateAlbumCounter()
+    
+    // Update URL if router is available
+    if (this.router) {
+      this.router.updateURL();
+    }
   }
 
   // gets album data and loads it into the state
@@ -255,7 +267,13 @@ class Slideshow {
   navigateSlides(direction = 0) {
     this.slides.navigateSlides(direction);
     this.updateSlidesCounter(this.slides.currentSlideIndex, this.slides.slides.length)
-
+    
+    // Update URL if router is available (use setTimeout to ensure slide index is updated)
+    if (this.router) {
+      setTimeout(() => {
+        this.router.updateURL();
+      }, 0);
+    }
   }
 
   // update album counter
@@ -356,6 +374,11 @@ class Slideshow {
   randomAlbum() {
     this.getRandomAlbum()
     this.displaySlides()
+    
+    // Update URL if router is available
+    if (this.router) {
+      this.router.updateURL();
+    }
   }
 
   // turn navigation on or off when the slideshow is playing
@@ -444,6 +467,153 @@ function hasVerticalScrollbars() {
 window.resizeAlbumTitles = resizeAlbumTitles;
 window.resizeImages = resizeImages;
 
+class URLRouter {
+  constructor(slideshow) {
+    this.slideshow = slideshow;
+    this.isUpdating = false; // Prevent infinite loops
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    // Listen for browser back/forward navigation
+    window.addEventListener('popstate', (event) => {
+      this.handleURLChange();
+    });
+    
+    // Listen for hash changes
+    window.addEventListener('hashchange', (event) => {
+      this.handleURLChange();
+    });
+  }
+
+  // Parse current URL and extract collection ID and slide number
+  parseURL() {
+    const hash = window.location.hash;
+    console.log('URLRouter: Parsing URL hash:', hash);
+    
+    if (!hash || hash === '#') {
+      return { collectionId: null, slideNum: null };
+    }
+
+    // Match patterns: #collection/{id} or #collection/{id}/slide/{number}
+    const collectionMatch = hash.match(/^#collection\/([^\/]+)(?:\/slide\/(\d+))?$/);
+    
+    if (!collectionMatch) {
+      console.log('URLRouter: Malformed URL, using defaults');
+      return { collectionId: null, slideNum: null };
+    }
+
+    const collectionId = collectionMatch[1];
+    const slideNum = collectionMatch[2] ? parseInt(collectionMatch[2], 10) : null;
+    
+    console.log('URLRouter: Parsed - Collection ID:', collectionId, 'Slide:', slideNum);
+    return { collectionId, slideNum };
+  }
+
+  // Find album index by collection ID
+  findAlbumIndexById(collectionId) {
+    if (!collectionId) return 0;
+    
+    const index = this.slideshow.albumCollection.findIndex(album => album.id === collectionId);
+    console.log('URLRouter: Found album index', index, 'for collection ID', collectionId);
+    return index >= 0 ? index : 0;
+  }
+
+  // Handle URL changes from browser navigation
+  handleURLChange() {
+    if (this.isUpdating) {
+      console.log('URLRouter: Skipping URL change handling (currently updating)');
+      return;
+    }
+
+    console.log('URLRouter: Handling URL change');
+    const { collectionId, slideNum } = this.parseURL();
+    
+    // Find and load the specified collection
+    const albumIndex = this.findAlbumIndexById(collectionId);
+    const slideIndex = slideNum ? Math.max(0, slideNum - 1) : 0; // Convert to 0-indexed
+    
+    console.log('URLRouter: Navigating to album', albumIndex, 'slide', slideIndex);
+    
+    // Update slideshow state without triggering URL updates
+    this.isUpdating = true;
+    
+    if (this.slideshow.album.albumIndex !== albumIndex) {
+      this.slideshow.loadAlbum(albumIndex);
+      this.slideshow.displaySlides(slideIndex);
+    } else if (this.slideshow.slides.currentSlideIndex !== slideIndex) {
+      this.slideshow.slides.setSlideIndex(slideIndex);
+      this.slideshow.slides.showSlides(0);
+      this.slideshow.updateSlidesCounter(this.slideshow.slides.currentSlideIndex, this.slideshow.slides.slides.length);
+    }
+    
+    this.updatePageTitle();
+    this.isUpdating = false;
+  }
+
+  // Generate URL for current state
+  generateURL() {
+    const currentAlbum = this.slideshow.albumCollection[this.slideshow.album.albumIndex];
+    const currentSlideIndex = this.slideshow.slides.currentSlideIndex;
+    
+    if (!currentAlbum || !currentAlbum.id) {
+      console.log('URLRouter: No valid album data for URL generation');
+      return '#';
+    }
+
+    let url = `#collection/${currentAlbum.id}`;
+    
+    // Only include slide number if not on first slide
+    if (currentSlideIndex > 0) {
+      url += `/slide/${currentSlideIndex + 1}`; // Convert to 1-indexed
+    }
+    
+    console.log('URLRouter: Generated URL:', url);
+    return url;
+  }
+
+  // Update browser URL and title
+  updateURL() {
+    if (this.isUpdating) {
+      console.log('URLRouter: Skipping URL update (currently handling URL change)');
+      return;
+    }
+
+    const newURL = this.generateURL();
+    const currentURL = window.location.hash;
+    
+    if (newURL !== currentURL) {
+      console.log('URLRouter: Updating URL from', currentURL, 'to', newURL);
+      window.history.pushState(null, '', newURL);
+      this.updatePageTitle();
+    }
+  }
+
+  // Update page title with collection information
+  updatePageTitle() {
+    const currentAlbum = this.slideshow.albumCollection[this.slideshow.album.albumIndex];
+    if (currentAlbum && currentAlbum.title) {
+      const title = `${currentAlbum.title} - Museo`;
+      console.log('URLRouter: Updating page title to:', title);
+      document.title = title;
+    }
+  }
+
+  // Initialize router with current URL state
+  initialize() {
+    console.log('URLRouter: Initializing');
+    const { collectionId, slideNum } = this.parseURL();
+    
+    if (collectionId) {
+      // URL specifies a collection, load it
+      this.handleURLChange();
+    } else {
+      // No URL state, update URL to reflect current state
+      this.updateURL();
+    }
+  }
+}
+
 async function fetchAllData() {
   const response = await fetch("https://floaties.s3.us-west-1.amazonaws.com/floaties.json");
   const data = await response.json();
@@ -453,6 +623,9 @@ async function fetchAllData() {
 async function loadFunctionality() {
   const data = await fetchAllData()
   const slideshow = new Slideshow(data)
+  
+  // Make slideshow available globally for testing
+  window.slideshow = slideshow;
 
   const prevSlide = document.getElementById('prev-slide');
   prevSlide.addEventListener('click', () => slideshow.navigateSlides(-1), false );
@@ -500,6 +673,9 @@ async function loadFunctionality() {
 
   slideshow.loadAlbum()
   slideshow.displaySlides()
+  
+  // Initialize router after slideshow is set up
+  slideshow.initializeRouter()
 }
 
 loadFunctionality()

@@ -49,16 +49,25 @@ class Slides {
     this.albumLength = slides.length
     this.currentSlideIndex = newIndex < 0 ? slides.length - 1 : newIndex % slides.length;
 
+    // Remove fade class from all slides first to prevent conflicts
     for (let i = 0; i < slides.length; i++) {
+      slides[i].classList.remove('fade');
       slides[i].style.display = "none";
+      slides[i].style.opacity = ""; // Reset any inline opacity
     }
 
     if(this.isPlaying) {
-      slides[this.currentSlideIndex].classList.add('fade')
+      // For slideshow: start slide hidden with fade class, then show to trigger animation
+      slides[this.currentSlideIndex].style.opacity = "0";
+      slides[this.currentSlideIndex].style.display = "block";
+      slides[this.currentSlideIndex].classList.add('fade');
+      // Force a reflow to ensure opacity change is applied before animation
+      slides[this.currentSlideIndex].offsetHeight;
     } else {
-      slides[this.currentSlideIndex].classList.remove('fade')
+      // For manual navigation: just show the slide without fade
+      slides[this.currentSlideIndex].style.opacity = "1";
+      slides[this.currentSlideIndex].style.display = "block";
     }
-    slides[this.currentSlideIndex].style.display = "block";
   }
 
   // return the slide element from the DOM
@@ -306,7 +315,9 @@ class Slideshow {
       if (this.slides.currentSlideIndex == this.slides.slides.length) {
         this.slides.currentSlideIndex -= 1
       }
-      this.slides.getSlidesElement()[this.slides.currentSlideIndex].classList.remove('fade')
+      const currentSlide = this.slides.getSlidesElement()[this.slides.currentSlideIndex];
+      currentSlide.classList.remove('fade');
+      currentSlide.style.opacity = ""; // Reset opacity when stopping
       if(playbackOption != 'random'){
         this.slides.showSlides(-1)
       }

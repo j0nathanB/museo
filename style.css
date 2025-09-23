@@ -230,7 +230,7 @@ img {
 .disable {
   pointer-events: none;
   color: #999999;
-  background-color: #CCCCCC;
+  /* Remove background-color to eliminate gray boxes */
 }
 
 /* Fading animation - keep existing functionality */
@@ -238,6 +238,7 @@ img {
   animation-name: fade;
   animation-duration: 9s;
   animation-timing-function: ease-in-out;
+  animation-fill-mode: both; /* Maintain initial and final states */
 }
 
 @keyframes fade {

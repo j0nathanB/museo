@@ -210,7 +210,7 @@ class Album {
     if (worksAttr.length > 0) {
       albumData += `<p>${worksAttr}</p>`;
     }
-    albumData += `<div class="tags">${tags}</div>`;
+    albumData += `<div class="tags">${this.formatClickableTags(tags)}</div>`;
     albumData += `<div><a href=${link}>Link</a></div>`;
     albumData += `</div>`;
     
@@ -221,6 +221,16 @@ class Album {
     console.log('DOM Element:', element);
     
     return element;
+  }
+
+  // format tags as clickable elements
+  formatClickableTags(tags) {
+    if (!tags) return '';
+    
+    return tags.split(',').map(tag => {
+      const trimmedTag = tag.trim();
+      return `<span class="tag-item" onclick="window.slideshow.filterByTag('${trimmedTag}')">${trimmedTag}</span>`;
+    }).join(', ');
   }
 
   // get album fields from an album
@@ -256,9 +266,13 @@ class Album {
 }
 
 class Slideshow {
-  constructor(floaties) {
+  constructor(floaties, tagsByCollection = null) {
     this.slideIndex = 0;
     this.albumCollection = floaties; // array of albums
+    this.allAlbums = floaties; // keep reference to all albums
+    this.tagsByCollection = tagsByCollection; // tag-organized data
+    this.currentTag = null; // currently filtered tag
+    this.filteredAlbums = null; // albums filtered by tag
     this.randomAlbums = this.shuffleIndexes(this.albumCollection); // [7, 4, 1, etc.] values correspond to place in albumCollection
     this.randomAlbumsIx = 0; // pointer to current place in randomAlbums
     this.isPlaying = false;
@@ -322,10 +336,23 @@ class Slideshow {
 
   // update album counter
   updateAlbumCounter(){
-    const albumCounterDiv = document.getElementsByClassName("album-counter")[0]
+    const albumCountDiv = document.querySelector(".album-counter .album-count")
+    const albumResetDiv = document.querySelector(".album-counter .album-reset")
     const currentCollection = formatNumber(this.album.albumIndex + 1)
     const totalCollections = formatNumber(this.albumCollection.length)
-    albumCounterDiv.innerHTML = `Collection ${currentCollection} of ${totalCollections}<br /><br />`
+    
+    if (this.isFiltered()) {
+      // Show tag filtering status with reset button
+      albumCountDiv.innerHTML = `${currentCollection} of ${totalCollections} ${this.currentTag} collections`
+      albumResetDiv.innerHTML = `RESET`
+      albumResetDiv.style.display = 'block'
+      albumResetDiv.onclick = () => window.slideshow.resetTagFilter()
+    } else {
+      // Show normal collection counter
+      albumCountDiv.innerHTML = `Collection ${currentCollection} of ${totalCollections}`
+      albumResetDiv.style.display = 'none'
+      albumResetDiv.onclick = null
+    }
   }
 
   // update slide counter
@@ -448,6 +475,53 @@ class Slideshow {
       }
     });
   }
+
+  // Tag filtering methods
+  filterByTag(tag) {
+    if (!this.tagsByCollection || !this.tagsByCollection[tag]) {
+      console.warn(`Tag "${tag}" not found`);
+      return;
+    }
+
+    this.currentTag = tag;
+    
+    // Get IDs of albums with this tag
+    const taggedAlbumIds = this.tagsByCollection[tag].map(item => item.id);
+    
+    // Filter the main album collection to only include albums with this tag
+    this.filteredAlbums = this.allAlbums.filter(album => taggedAlbumIds.includes(album.id));
+    this.albumCollection = this.filteredAlbums;
+    
+    // Reset to first album in filtered collection
+    this.album.albumIndex = 0;
+    this.loadAlbum(0);
+    this.displaySlides();
+    this.updateAlbumCounter();
+    
+    // Update random albums for this filtered collection
+    this.randomAlbums = this.shuffleIndexes(this.albumCollection);
+    this.randomAlbumsIx = 0;
+  }
+
+  resetTagFilter() {
+    this.currentTag = null;
+    this.filteredAlbums = null;
+    this.albumCollection = this.allAlbums;
+    
+    // Reset to first album in full collection
+    this.album.albumIndex = 0;
+    this.loadAlbum(0);
+    this.displaySlides();
+    this.updateAlbumCounter();
+    
+    // Update random albums for full collection
+    this.randomAlbums = this.shuffleIndexes(this.albumCollection);
+    this.randomAlbumsIx = 0;
+  }
+
+  isFiltered() {
+    return this.currentTag !== null;
+  }
 }
 
 
@@ -518,9 +592,25 @@ async function fetchAllData() {
   return data.reverse()
 }
 
+async function fetchTagsData() {
+  try {
+    const response = await fetch("floaties-by-tags.json");
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.warn("Could not load floaties-by-tags.json:", error);
+    return null;
+  }
+}
+
 async function loadFunctionality() {
-  const data = await fetchAllData()
-  const slideshow = new Slideshow(data)
+  const [data, tagData] = await Promise.all([fetchAllData(), fetchTagsData()]);
+  const slideshow = new Slideshow(data, tagData)
   
   // Make slideshow available globally for testing
   window.slideshow = slideshow;

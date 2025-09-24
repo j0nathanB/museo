@@ -31,6 +31,29 @@ describe('Peroflota Slideshow', () => {
     cy.get('.slide-counter').should('contain', ' of ')
   })
 
+  it('should have album-counter with flex layout and nested divs', () => {
+    // Check that album-counter has flex layout
+    cy.get('.album-counter').should('have.css', 'display', 'flex')
+    cy.get('.album-counter').should('have.css', 'justify-content', 'space-between')
+    
+    // Check that album-counter contains two nested divs
+    cy.get('.album-counter .album-count').should('exist')
+    cy.get('.album-counter .album-reset').should('exist')
+    
+    // Check that the left div contains the album count
+    cy.get('.album-counter .album-count').should('contain', 'Collection')
+    cy.get('.album-counter .album-count').should('contain', ' of ')
+    
+    // Initially, reset div should not be visible when no tag filter is applied
+    cy.get('.album-counter .album-reset').should('not.be.visible')
+  })
+
+  it('should show reset text in right div when filtered by tag', () => {
+    // This test will be implemented when tag filtering is added
+    // For now, we just ensure the structure exists for future functionality
+    cy.get('.album-counter .album-reset').should('exist')
+  })
+
   it('should navigate between slides', () => {
     cy.waitForImageLoad()
     

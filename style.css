@@ -348,6 +348,9 @@ h1, h2, h3, h4, h5, h6, p, div, span {
   width: 100%; /* Fixed width to prevent constraint issues */
   position: relative; /* Enable absolute positioning for children */
   overflow: hidden; /* Prevent overflow */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* Top content that can scroll if needed */
@@ -368,7 +371,7 @@ h1, h2, h3, h4, h5, h6, p, div, span {
 /* Fixed positioning for navigation elements */
 .album-navigation {
   position: relative;
-  margin-top: auto; /* Push to bottom of container */
+  margin-top: 1vh; /* Push to bottom of container */
 }
 
 /* Ensure metadata is properly styled */

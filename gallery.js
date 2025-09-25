@@ -230,7 +230,7 @@ class Album {
     return tags.split(',').map(tag => {
       const trimmedTag = tag.trim();
       return `<span class="tag-item" onclick="window.slideshow.filterByTag('${trimmedTag}')">${trimmedTag}</span>`;
-    }).join(', ');
+    }).join('-');
   }
 
   // get album fields from an album

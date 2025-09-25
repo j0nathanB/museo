@@ -69,6 +69,7 @@ p.album-title {
   margin-top: 16px !important;
   margin-bottom: 24px !important;
   text-align: left !important;
+  min-height: 31px; /* Reserve space for title to prevent layout shift */
 }
 
 /* Typography - Metadata (counters) */
@@ -87,6 +88,7 @@ p.album-title {
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  min-height: 16px; /* Reserve space to prevent layout shift */
 }
 
 .album-count {
@@ -238,6 +240,7 @@ a:hover {
   width: 35vw;
   display: flex;
   justify-content: space-evenly;
+  min-height: 64px; /* Reserve space for buttons to prevent layout shift */
   /* margin-bottom: 32px; 8px grid */
 }
 
@@ -351,6 +354,8 @@ h1, h2, h3, h4, h5, h6, p, div, span {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  /* Reserve minimum space for content to prevent initial layout shift */
+  min-height: 200px;
 }
 
 /* Top content that can scroll if needed */

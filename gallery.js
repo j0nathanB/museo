@@ -609,6 +609,24 @@ async function fetchTagsData() {
 }
 
 async function loadFunctionality() {
+  // Get references to loading screen and main content
+  const loadingScreen = document.getElementById('loading-screen');
+  const loadingText = document.querySelector('.loading-text');
+  const layoutContainer = document.querySelector('.layout-container');
+  
+  // Wait for fonts to load before showing loading text
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+    loadingText.classList.add('fonts-loaded');
+  } else {
+    // Fallback for browsers without FontFaceSet API
+    setTimeout(() => loadingText.classList.add('fonts-loaded'), 100);
+  }
+  
+  // Hide right container initially to prevent layout shift
+  const rightContainer = document.querySelector('.right-container');
+  rightContainer.style.visibility = 'hidden';
+  
   const [data, tagData] = await Promise.all([fetchAllData(), fetchTagsData()]);
   const slideshow = new Slideshow(data, tagData)
   
@@ -661,6 +679,18 @@ async function loadFunctionality() {
 
   slideshow.loadAlbum()
   await slideshow.displaySlides()
+  
+  // Show right container after everything is loaded and rendered
+  rightContainer.style.visibility = 'visible';
+  
+  // Fade out loading screen and fade in main content
+  loadingScreen.classList.add('loading-screen-fade-out');
+  layoutContainer.classList.add('content-fade-in');
+  
+  // Remove loading screen from DOM after fade completes
+  setTimeout(() => {
+    loadingScreen.remove();
+  }, 800); // Match the CSS transition duration
 }
 
 loadFunctionality()

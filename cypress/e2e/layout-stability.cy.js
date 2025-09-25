@@ -3,21 +3,31 @@ describe('Layout Stability', () => {
     cy.visit('/')
   })
 
-  it('should prevent initial layout shift in right container elements', () => {
-    // Test that album navigation and collection info maintain stable positions during load
+  it('should prevent top navigation from shifting down during load', () => {
+    // Focus specifically on the top navigation elements that were causing jank
     
-    // Check initial positions of right container elements before full load
-    cy.get('.album-counter').then($counter => {
-      const initialCounterTop = $counter[0].getBoundingClientRect().top
+    // Check initial position of top-right container
+    cy.get('.top-right').then($topRight => {
+      const initialTopRightTop = $topRight[0].getBoundingClientRect().top
       
-      // Wait for slideshow to fully load
-      cy.waitForSlideshow()
-      
-      // Verify album navigation position hasn't shifted significantly
-      cy.get('.album-counter').then($counterAfter => {
-        const finalCounterTop = $counterAfter[0].getBoundingClientRect().top
-        // Allow for minor pixel differences but prevent major shifts (>10px)
-        expect(Math.abs(finalCounterTop - initialCounterTop)).to.be.lessThan(10)
+      // Check initial album counter position
+      cy.get('.album-counter').then($counter => {
+        const initialCounterTop = $counter[0].getBoundingClientRect().top
+        
+        // Wait for slideshow to fully load
+        cy.waitForSlideshow()
+        
+        // Verify top-right container hasn't shifted down
+        cy.get('.top-right').then($topRightAfter => {
+          const finalTopRightTop = $topRightAfter[0].getBoundingClientRect().top
+          expect(Math.abs(finalTopRightTop - initialTopRightTop)).to.be.lessThan(5)
+        })
+        
+        // Verify album counter position is stable
+        cy.get('.album-counter').then($counterAfter => {
+          const finalCounterTop = $counterAfter[0].getBoundingClientRect().top
+          expect(Math.abs(finalCounterTop - initialCounterTop)).to.be.lessThan(5)
+        })
       })
     })
   })

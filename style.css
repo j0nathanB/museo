@@ -42,7 +42,7 @@ body {
 
 .right-container {
   display: flex;
-  align-items: center; 
+  align-items: flex-start; /* Keep content at top instead of centering */
   justify-content: flex-start;
   flex-direction: column;
   width: 40vw;
@@ -347,7 +347,7 @@ h1, h2, h3, h4, h5, h6, p, div, span {
 /* Album data container - split layout for fixed bottom content */
 .album-data {
   background-color: transparent;
-  height: 90vh; /* Fixed height to prevent content shifting */
+  flex: 1; /* Take remaining space in right container */
   width: 100%; /* Fixed width to prevent constraint issues */
   position: relative; /* Enable absolute positioning for children */
   overflow: hidden; /* Prevent overflow */
@@ -356,6 +356,7 @@ h1, h2, h3, h4, h5, h6, p, div, span {
   justify-content: center;
   /* Reserve minimum space for content to prevent initial layout shift */
   min-height: 200px;
+  margin-top: 32px; /* Space from top navigation */
 }
 
 /* Top content that can scroll if needed */
